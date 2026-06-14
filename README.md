@@ -1,16 +1,42 @@
-## Hi there 👋
+# Hi, I'm Yassine
 
-<!--
-**Ya6n3/ya6n3** is a ✨ _special_ ✨ repository because its `README.md` (this file) appears on your GitHub profile.
+Software Engineer focused on building AI-powered products and modern web applications.
 
-Here are some ideas to get you started:
+## Building
 
-- 🔭 I’m currently working on ...
-- 🌱 I’m currently learning ...
-- 👯 I’m looking to collaborate on ...
-- 🤔 I’m looking for help with ...
-- 💬 Ask me about ...
-- 📫 How to reach me: ...
-- 😄 Pronouns: ...
-- ⚡ Fun fact: ...
--->
+- AI-powered concierge systems
+- Automation tools for busy professionals
+- Full-stack SaaS applications
+- Consumer products powered by AI
+
+## Technologies
+
+Frontend
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+
+Backend
+- Node.js
+- PostgreSQL
+- REST APIs
+
+AI & Automation
+- OpenAI API
+- AI Agents
+- Workflow Automation
+
+## Featured Projects
+
+### NFTW Concierge
+An AI-powered personal operating system designed to help busy professionals manage reservations, scheduling, travel planning, and everyday logistics.
+
+### AI Assistant
+A conversational AI application with memory, authentication, and intelligent task management.
+
+## Contact
+
+LinkedIn
+GitHub
+Email
