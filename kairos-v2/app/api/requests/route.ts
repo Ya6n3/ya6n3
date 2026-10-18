@@ -1,27 +1,14 @@
 import { NextResponse } from "next/server";
 import { parseIntake } from "@/lib/intake";
 import { createMembershipRequest } from "@/lib/notion";
+import { clientIp, getLimiter } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
-// Simple per-IP rate limit: 5 submissions per 10 minutes.
-// In-memory, so it resets on redeploy and is per-instance. Good enough for
-// launch; move to Upstash/Redis if you see abuse or run multiple instances.
-const WINDOW_MS = 10 * 60 * 1000;
-const LIMIT = 5;
-const hits = new Map<string, number[]>();
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  return recent.length > LIMIT;
-}
-
 export async function POST(request: Request) {
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-  if (rateLimited(ip)) {
+  // Per-IP limit (5 per 10 minutes), shared across instances when Upstash
+  // Redis is configured. See lib/rate-limit.ts.
+  if (await getLimiter().isLimited(clientIp(request.headers))) {
     return NextResponse.json(
       { ok: false, errors: ["Too many requests. Please try again shortly."] },
       { status: 429 },
