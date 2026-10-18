@@ -1,0 +1,26 @@
+{
+  "name": "kairos-v2",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Kairos NYC Concierge — V2 member intake, backed by the Notion Agent Pipeline",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "next": "^15.5.28",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "@types/react": "^19.3.0",
+    "typescript": "^5.9.3"
+  }
+}
