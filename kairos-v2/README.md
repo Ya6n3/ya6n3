@@ -1,17 +1,20 @@
 # Kairos V2 — Member Intake
 
 A branded request form for Kairos NYC Concierge. Each submission becomes a row in the
-Notion **Agent Pipeline**, where your existing Zapier Intake Zap picks it up.
+Notion **Membership Requests** database, exactly like the Notion "Request a service" form,
+so the existing Zapier zaps handle everything after that.
 
 ## How it fits
 
 ```
-Member → kairosnyc.io form → /api/requests → Notion Agent Pipeline
-                                              (Type = Client Request, Stage = New, Source = Form)
+Member → kairosnyc.io form → /api/requests → Notion Membership Requests
                                                      ↓
-                                     Zapier Intake Zap → Claude draft → Draft Reply
+                                Zapier alert zap → alert email
+                                                 → copy to Agent Pipeline (Client Request, New, Form)
                                                      ↓
-                                     You review in "Awaiting approval" → tick Approved
+                                Xenia Intake → Claude triage + Draft Reply → Gmail draft
+                                                     ↓
+                                You review the draft and send it
 ```
 
 The app does **not** call Claude itself. Drafting stays in Zapier so there is one place
@@ -19,23 +22,25 @@ that writes drafts, and you don't pay for two.
 
 ## Field mapping
 
-| Form field | Notion property | Notes |
+Same fields as the Notion form, so the zap's mapping works unchanged.
+
+| Form field | Membership Requests property | Notes |
 |---|---|---|
-| Category + Name | Name (title) | e.g. "Dining — Jane Doe" |
-| — | Type | Always `Client Request` |
-| — | Stage | Always `New` |
-| — | Source | `Form` (or `Test` when enabled) |
-| Category | Category | Dining, Events, Travel, Errands, Business Services, Other |
-| How soon? | Urgency | Today → Urgent, This week → Normal, No rush → Low |
-| Email | Contact | Used as the "To" address by the Gmail step |
-| Request + Phone | Request Details | Phone appended on its own line |
-| — | Needs Human | Ticked automatically for Urgent |
+| Name | Full name (title) | Name only; Xenia greets the member by it |
+| Email | Email | Used as the "To" address of the draft |
+| Phone | Phone | Optional |
+| Which service | Help first with | Tables, Travel, Access, Bespoke sourcing, Home, Wellbeing, Family & guests, Something else |
+| What do you need? | Anything we should know | Required, 10 to 4000 characters |
+| When | When | Optional free text |
+| Budget | Budget | Optional free text |
+
+Stage is left to Notion's default (New). Category and urgency are set by Xenia.
 
 ## Setup (about 15 minutes)
 
 1. **Create a Notion integration**: notion.so/profile/integrations → New integration →
    Internal. Give it *Insert content* and *Read content* only. Copy the secret.
-2. **Share the database**: open Agent Pipeline → ••• → Connections → add the integration.
+2. **Share the database**: open Membership Requests → ••• → Connections → add the integration.
    Without this, every write fails with 404.
 3. **Configure env**: `cp .env.example .env.local` and paste the secret into `NOTION_TOKEN`.
 4. **Run locally**:
@@ -44,9 +49,10 @@ that writes drafts, and you don't pay for two.
    npm run dev     # http://localhost:3000
    ```
    To test without triggering Zapier, set `ALLOW_TEST_SUBMISSIONS=true` and send
-   `"isTest": true` in the body (e.g. with curl), so the row is marked `Source = Test`.
+   `"isTest": true` in the body (e.g. with curl). The request is validated but nothing is
+   written to Notion. Any real submission sets off the alert email and Xenia.
 5. **Deploy to Vercel**: import the folder, add `NOTION_TOKEN` and
-   `NOTION_PIPELINE_DATABASE_ID` as environment variables, deploy, then point
+   `NOTION_MEMBERSHIP_DATABASE_ID` as environment variables, deploy, then point
    kairosnyc.io (or a subdomain such as `request.kairosnyc.io`) at it.
 
 ## Built-in protections

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { parseIntake } from "@/lib/pipeline";
-import { createPipelineRow } from "@/lib/notion";
+import { parseIntake } from "@/lib/intake";
+import { createMembershipRequest } from "@/lib/notion";
 
 export const runtime = "nodejs";
 
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Only allow test rows when explicitly enabled (e.g. in development).
+  // Only allow test submissions when explicitly enabled (e.g. in development).
   if (process.env.ALLOW_TEST_SUBMISSIONS !== "true") body.isTest = false;
 
   const parsed = parseIntake(body);
@@ -49,9 +49,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, errors: parsed.errors }, { status: 422 });
   }
 
+  // Membership Requests has no Source field to mark a test row, and every new
+  // row sets off the zaps, so a test submission is validated but not written.
+  if (parsed.data.isTest) return NextResponse.json({ ok: true, id: "test" });
+
   try {
-    await createPipelineRow(parsed.data);
-    return NextResponse.json({ ok: true });
+    const id = await createMembershipRequest(parsed.data);
+    return NextResponse.json({ ok: true, id });
   } catch (err) {
     console.error("Intake submit failed:", err);
     return NextResponse.json(
