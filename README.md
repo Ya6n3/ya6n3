@@ -36,4 +36,5 @@ The AI drafts and organizes. A person approves and does the work, which keeps qu
 
 ## Contact
 
-Open an issue here or reach me on [GitHub](https://github.com/Ya6n3).
+- [LinkedIn](https://www.linkedin.com/in/yassine-daouda-696a33126)
+- [GitHub](https://github.com/Ya6n3)
