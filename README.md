@@ -1,42 +1,39 @@
 # Hi, I'm Yassine
 
-Software Engineer focused on building AI-powered products and modern web applications.
+Founder of **Kairos NYC Concierge**, a members-only concierge service for busy New York professionals. I'm a software engineer, and I build the product and the operations behind it myself.
 
-## Building
+> The real luxury is mental bandwidth. Kairos handles the logistics so members don't have to think about them.
 
-- AI-powered concierge systems
-- Automation tools for busy professionals
-- Full-stack SaaS applications
-- Consumer products powered by AI
+## What I'm building
 
-## Technologies
+**Kairos NYC Concierge** takes care of everyday logistics for founders, finance professionals and creatives in NYC: hard-to-get reservations, scheduling, returns, travel fixes, gift sourcing and "just handle this for me" requests.
 
-Frontend
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
+Behind the scenes, the service runs on a human-in-the-loop operating system:
 
-Backend
-- Node.js
-- PostgreSQL
-- REST APIs
+- **Intake:** members send requests through a branded web form, and each one lands in a Notion pipeline.
+- **Triage:** an AI step drafts the reply and sorts the request by category and urgency.
+- **Approval:** an operator reviews every draft before anything reaches a member.
+- **Knowledge:** vendor directories and SOPs keep what we learn in shared playbooks instead of in someone's head.
 
-AI & Automation
-- OpenAI API
-- AI Agents
-- Workflow Automation
+The AI drafts and organizes. A person approves and does the work, which keeps quality high.
 
-## Featured Projects
+## In this repo
 
-### NFTW Concierge
-An AI-powered personal operating system designed to help busy professionals manage reservations, scheduling, travel planning, and everyday logistics.
+| Project | What it is | Stack |
+|---|---|---|
+| [`kairos-v2`](./kairos-v2) | Member intake app. Each request becomes a row in the Notion Agent Pipeline, with validation, a bot trap and a rate limit built in. | Next.js 15, React 19, TypeScript, Notion API |
 
-### AI Assistant
-A conversational AI application with memory, authentication, and intelligent task management.
+## How I build
+
+- **Ship the smallest useful version first**, then automate only what keeps coming back.
+- **Humans approve, AI assists.** Nothing goes out to a client without review.
+- **Keep the stack lean:** Notion as the operating database, Zapier for the glue, and Claude for triage and drafting.
+
+## Stack
+
+**Product:** Next.js · React · TypeScript · Tailwind CSS · Node.js · PostgreSQL · Vercel
+**Operations & AI:** Notion · Zapier · Claude (Anthropic API) · workflow automation
 
 ## Contact
 
-LinkedIn
-GitHub
-Email
+Open an issue here or reach me on [GitHub](https://github.com/Ya6n3).
