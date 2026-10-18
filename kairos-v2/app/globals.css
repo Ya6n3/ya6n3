@@ -65,8 +65,8 @@ textarea { resize: vertical; border: 1px solid var(--line); padding: 12px; borde
 input:focus, select:focus, textarea:focus { border-color: var(--brass); }
 textarea::placeholder { color: #6f6a5d; }
 
-.urgency { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.urgency legend { margin-bottom: 8px; width: 100%; }
+.choices { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.choices legend { margin-bottom: 8px; padding: 0; width: 100%; }
 .pill { display: inline-block; cursor: pointer; }
 .pill input { position: absolute; opacity: 0; pointer-events: none; width: 1px; }
 .pill span {

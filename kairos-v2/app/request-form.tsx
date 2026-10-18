@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CATEGORIES, URGENCIES } from "@/lib/pipeline";
+import { SERVICES } from "@/lib/intake";
 
 type Status = "idle" | "sending" | "sent" | "error";
 
@@ -12,7 +12,8 @@ export function RequestForm() {
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
-    const data = Object.fromEntries(new FormData(form).entries());
+    const fd = new FormData(form);
+    const data = { ...Object.fromEntries(fd.entries()), services: fd.getAll("services") };
 
     setStatus("sending");
     setErrors([]);
@@ -41,7 +42,7 @@ export function RequestForm() {
       <div className="card confirm" role="status">
         <p className="eyebrow">Received</p>
         <h2>Thank you. Your request is with the team.</h2>
-        <p>You&rsquo;ll hear from us by email. Urgent requests are prioritised.</p>
+        <p>We read every request and reply personally by email with next steps.</p>
         <button className="ghost" onClick={() => setStatus("idle")}>
           Send another request
         </button>
@@ -62,49 +63,51 @@ export function RequestForm() {
         </label>
       </div>
 
-      <div className="row">
-        <label>
-          <span>
-            Phone <small>optional</small>
-          </span>
-          <input name="phone" type="tel" autoComplete="tel" maxLength={40} />
-        </label>
-        <label>
-          <span>Category</span>
-          <select name="category" required defaultValue="">
-            <option value="" disabled>
-              Choose one
-            </option>
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
+      <label>
+        <span>
+          Phone <small>optional</small>
+        </span>
+        <input name="phone" type="tel" autoComplete="tel" maxLength={40} />
+      </label>
 
-      <fieldset className="urgency">
-        <legend>How soon?</legend>
-        {URGENCIES.map((u) => (
-          <label key={u} className="pill">
-            <input type="radio" name="urgency" value={u} defaultChecked={u === "Normal"} />
-            <span>{u === "Urgent" ? "Today" : u === "Normal" ? "This week" : "No rush"}</span>
+      <fieldset className="choices">
+        <legend>
+          Which service <small>optional</small>
+        </legend>
+        {SERVICES.map((s) => (
+          <label key={s} className="pill">
+            <input type="checkbox" name="services" value={s} />
+            <span>{s}</span>
           </label>
         ))}
       </fieldset>
 
       <label>
-        <span>Your request</span>
+        <span>What do you need?</span>
         <textarea
           name="details"
           rows={6}
           required
           minLength={10}
           maxLength={4000}
-          placeholder="e.g. Dinner for four on Saturday around 8pm, West Village, somewhere with a good wine list."
+          placeholder="e.g. Dinner for four, somewhere in the West Village with a good wine list."
         />
       </label>
+
+      <div className="row">
+        <label>
+          <span>
+            When <small>optional</small>
+          </span>
+          <input name="when" maxLength={200} placeholder="e.g. Saturday, around 8pm" />
+        </label>
+        <label>
+          <span>
+            Budget <small>optional</small>
+          </span>
+          <input name="budget" maxLength={100} placeholder="e.g. $500 total" />
+        </label>
+      </div>
 
       {/* Honeypot — hidden from people, tempting to bots. */}
       <div className="hp" aria-hidden="true">
