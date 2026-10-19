@@ -1,5 +1,6 @@
 /* Kairos couture: black on white, a Didone for titles, spaced capitals for labels,
-   generous white space, square edges and one solid black action. */
+   generous white space, square edges and one solid black action.
+   Brass-gold, from the Kairos brand, is the only colour: used sparingly as an accent. */
 :root {
   --bg: #FFFFFF;
   --fg: #000000;
@@ -9,6 +10,10 @@
   --control: #BDBDBD;
   --soft: #F6F6F6;
   --danger: #A1251B;
+  --accent: #A8822F;        /* brass-gold, for large type, rules and marks */
+  --accent-text: #7A5F22;   /* the same gold, deep enough for small text on white */
+  --accent-soft: rgba(168, 130, 47, 0.12);
+  --accent-on-fg: #C9A765;  /* gold that reads on a filled (black) surface */
   --font-display-stack: var(--font-display), "Didot", "Bodoni 72", Georgia, serif;
   --font-text-stack: var(--font-text), "Helvetica Neue", Helvetica, Arial, sans-serif;
   color-scheme: light;
@@ -24,6 +29,10 @@
     --control: #4D4D4D;
     --soft: #0F0F0F;
     --danger: #F08A80;
+    --accent: #C9A765;
+    --accent-text: #D4B475;
+    --accent-soft: rgba(201, 167, 101, 0.14);
+    --accent-on-fg: #7A5F22;
     color-scheme: dark;
   }
 }
@@ -180,5 +189,25 @@ input::placeholder, textarea::placeholder { color: var(--muted); }
 .foot-mark { font-family: var(--font-display-stack); color: var(--fg); font-size: 20px; letter-spacing: 0.34em; text-transform: uppercase; margin-right: -0.34em; }
 .foot a { color: var(--fg); text-underline-offset: 4px; text-decoration-thickness: 1px; }
 .greek-line span { font-family: var(--font-display-stack); font-style: italic; color: var(--fg); }
+
+/* Accents: gold marks the things that matter, everything else stays black and white */
+body { border-top: 3px solid var(--accent); }
+.mark { background: var(--accent); }
+.topline, .eyebrow, .num, .card-num, .time .pron { color: var(--accent-text); }
+.hero h1 em, .time .greek, .greek-line span { color: var(--accent); }
+.masthead { border-bottom-color: color-mix(in srgb, var(--accent) 35%, var(--rule)); }
+.time-grid { border-top-color: var(--accent); }
+.steps { border-top-color: var(--accent); }
+input:focus, textarea:focus { border-bottom-color: var(--accent); box-shadow: 0 1px 0 0 var(--accent); }
+.card:hover .card-face { border-color: var(--accent); }
+.card-face::after { background: radial-gradient(240px circle at var(--gx) var(--gy), var(--accent-soft), transparent 70%); }
+.card input:checked + .card-face { box-shadow: inset 0 -3px 0 var(--accent-on-fg); }
+.card input:checked + .card-face::before, .card input:checked + .card-face .card-num { color: var(--accent-on-fg); }
+.btn--primary:hover:not(:disabled), .btn--secondary:hover { background: var(--accent-text); border-color: var(--accent-text); color: var(--bg); }
+.foot a { text-decoration-color: var(--accent); }
+.foot-mark { color: var(--fg); }
+.foot-mark::after { content: ""; display: block; width: 28px; height: 1px; background: var(--accent); margin: 14px auto 0; }
+.armillary.is-moment .when { color: var(--accent-text); }
+:focus-visible { outline-color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } .card-face { transform: none !important; } }

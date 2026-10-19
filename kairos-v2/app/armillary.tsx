@@ -61,7 +61,9 @@ export function Armillary() {
     const draw = () => {
       const { width, height } = canvas.getBoundingClientRect();
       const cx = width / 2, cy = height / 2, R = Math.min(width, height) * 0.42;
-      const fg = getComputedStyle(canvas).color;
+      const style = getComputedStyle(canvas);
+      const fg = style.color;
+      const gold = style.getPropertyValue("--accent").trim() || fg;
       ctx.clearRect(0, 0, width, height);
       ctx.strokeStyle = fg;
       ctx.fillStyle = fg;
@@ -73,7 +75,8 @@ export function Armillary() {
       };
 
       // Rings: draw in short segments so the far side fades back.
-      for (const ring of RINGS) {
+      for (const [ri, ring] of RINGS.entries()) {
+        ctx.strokeStyle = ri === ECLIPTIC ? gold : fg;
         const steps = 120;
         let prev = project(ringPoint(ring, 0));
         for (let i = 1; i <= steps; i++) {
@@ -89,6 +92,8 @@ export function Armillary() {
         }
       }
 
+      ctx.strokeStyle = fg;
+
       // Axis through the poles, and the small sphere at the centre.
       const n = project([0, 1.18, 0]), s = project([0, -1.18, 0]);
       ctx.globalAlpha = 0.5;
@@ -101,11 +106,15 @@ export function Armillary() {
       const b = project(ringPoint(RINGS[ECLIPTIC], bead));
       const isMoment = b.y < cy - R * 0.55 && b.z > 0;
       ctx.globalAlpha = 1;
+      ctx.fillStyle = gold;
+      ctx.strokeStyle = gold;
       ctx.beginPath(); ctx.arc(b.x, b.y, isMoment ? 6 : 4, 0, Math.PI * 2); ctx.fill();
       if (isMoment) {
-        ctx.globalAlpha = 0.35; ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.arc(b.x, b.y, 12, 0, Math.PI * 2); ctx.stroke();
+        ctx.globalAlpha = 0.45; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.arc(b.x, b.y, 13, 0, Math.PI * 2); ctx.stroke();
       }
+      ctx.fillStyle = fg;
+      ctx.strokeStyle = fg;
       if (isMoment !== wasMoment) { wasMoment = isMoment; setMoment(isMoment); }
       ctx.globalAlpha = 1;
     };
