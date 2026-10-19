@@ -72,6 +72,51 @@ GitHub Actions (`.github/workflows/kairos-v2-ci.yml`) runs typecheck, tests and
 in CI, add a `NOTION_TOKEN` repository secret, ideally a separate integration with
 *Read content* only; without it that check is skipped.
 
+## Automations: research, approve-to-send, daily digest
+
+Three jobs run on the **Agent Pipeline** rows (rows with Source = Test are skipped, as the schema says):
+
+| What | When | Result |
+|---|---|---|
+| **Research** | A new client request appears (and daily for any missed) | Claude searches the web and fills **Options** (3 concrete picks with price and link) and **Research Notes** (constraints, questions to ask). It never contacts anyone. |
+| **Approve to send** | You tick **Approved** on a row in New/Triaged | The **Draft Reply** is emailed to the member, Stage → **Contacted**, **Next Follow-up** = +2 days, and the exact text sent is logged on the page. Each row is sent once, ever. |
+| **Daily digest** | ~8am ET | One email to `DIGEST_TO`: failed sends, drafts to approve, rows with no draft, follow-ups due, work in progress. |
+
+How it's wired:
+
+```
+Notion (row created / Approved ticked) ──webhook──▶ /api/notion/webhook ──▶ research + send
+Vercel cron 12:00 & 13:00 UTC ─────────────────────▶ /api/cron/daily-* ──▶ sweep missed rows + 8am digest
+```
+
+Vercel Hobby crons run once a day (±59 min), so instant actions come from Notion webhooks; the
+daily cron is the safety net. Two crons cover 8am ET in both daylight and standard time.
+
+Safeguards: approved + not Do Not Contact + Stage New/Triaged + an email in Contact are all required
+to send; a Redis lock and Resend idempotency key prevent duplicates; research is capped at
+`RESEARCH_DAILY_LIMIT` per day (default 20) and gives up on a row after 2 failures; member text
+is treated as untrusted input in the research prompt and escaped in emails.
+
+Cost: research ≈ $0.05–0.15 per request (Claude Sonnet tokens + up to 5 searches at $10/1,000);
+Resend's free tier covers this volume.
+
+### Setup
+
+1. **Notion access**: in the integration's settings, enable *Read*, *Update* and *Insert content*,
+   and add the integration to the **Agent Pipeline** database (••• → Connections).
+2. **Resend**: create an account, add and verify your sending domain (DNS records), create an API key.
+3. **Vercel env vars** (Settings → Environment Variables, Production): `ANTHROPIC_API_KEY`,
+   `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `DIGEST_TO`, `CRON_SECRET`. Redeploy.
+4. **Notion webhook**: integration settings → Webhooks → Create subscription →
+   `https://<your-domain>/api/notion/webhook`, events `page.created` and `page.properties_updated`.
+   Notion posts a verification token: find it in Vercel → Logs (search `verification_token`),
+   paste it into Notion's **Verify** dialog.
+5. **Zapier**: in *Kairos - Xenia Intake*, delete step 7 (Gmail Create Draft) so there's one
+   way to send. Steps 1–6 keep writing the Draft Reply into Notion.
+
+Test: submit the form with your own email, wait for the Draft Reply and Options to appear,
+tick Approved, and the email should arrive within a couple of minutes.
+
 ## Built-in protections
 
 - Server-side validation of every field and length limits.
