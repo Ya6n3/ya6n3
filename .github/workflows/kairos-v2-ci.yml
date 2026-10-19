@@ -1,0 +1,37 @@
+name: kairos-v2 CI
+
+on:
+  pull_request:
+    paths: ["kairos-v2/**", ".github/workflows/kairos-v2-ci.yml"]
+  push:
+    branches: [main]
+    paths: ["kairos-v2/**", ".github/workflows/kairos-v2-ci.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kairos-v2-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kairos-v2
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: kairos-v2/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      # The Notion schema check runs only if the NOTION_TOKEN repo secret is set
+      # (read-only integration recommended); otherwise it is skipped.
+      - run: npm test
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+      - run: npm run build
