@@ -1,7 +1,35 @@
 "use client";
 
 import { useState } from "react";
-import { SERVICES } from "@/lib/intake";
+import { SERVICES, type Service } from "@/lib/intake";
+
+// One line per service, in the website's words.
+const SERVICE_COPY: Record<Service, string> = {
+  Tables: "The hard-to-get table, the private room, the chef\u2019s counter on a Tuesday.",
+  Travel: "Flights, cars and hotels planned around your meetings, and re-planned when they move.",
+  Access: "Openings, matches, galas and the shows everyone is talking about.",
+  "Bespoke sourcing": "Gifts with a reason behind them, the hard-to-find bottle, the piece in the right size.",
+  Home: "Repairs, deliveries, cleaners and contractors, followed through so you are not the one waiting in.",
+  Wellbeing: "Trainers, treatments and appointments booked into the gaps in your week.",
+  "Family & guests": "Birthdays, visiting parents, the weekend for eight. Every detail held in one place.",
+  "Something else": "Anything else that can be arranged. Tell us in a sentence.",
+};
+
+// Cards lean toward the pointer, a few degrees at most.
+function tilt(e: React.PointerEvent<HTMLLabelElement>) {
+  if (e.pointerType !== "mouse") return;
+  const r = e.currentTarget.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width - 0.5;
+  const y = (e.clientY - r.top) / r.height - 0.5;
+  e.currentTarget.style.setProperty("--ry", `${x * 10}deg`);
+  e.currentTarget.style.setProperty("--rx", `${-y * 10}deg`);
+  e.currentTarget.style.setProperty("--gx", `${(x + 0.5) * 100}%`);
+  e.currentTarget.style.setProperty("--gy", `${(y + 0.5) * 100}%`);
+}
+function untilt(e: React.PointerEvent<HTMLLabelElement>) {
+  e.currentTarget.style.setProperty("--rx", "0deg");
+  e.currentTarget.style.setProperty("--ry", "0deg");
+}
 
 type Status = "idle" | "sending" | "sent" | "error";
 
@@ -72,14 +100,20 @@ export function RequestForm() {
 
       <fieldset className="choices">
         <legend>
-          Which service <small>optional</small>
+          Which service <small>optional, pick any</small>
         </legend>
-        {SERVICES.map((s) => (
-          <label key={s} className="pill">
-            <input type="checkbox" name="services" value={s} />
-            <span>{s}</span>
-          </label>
-        ))}
+        <div className="cards">
+          {SERVICES.map((s, i) => (
+            <label key={s} className="card" onPointerMove={tilt} onPointerLeave={untilt}>
+              <input type="checkbox" name="services" value={s} />
+              <span className="card-face">
+                <span className="card-num">{String(i + 1).padStart(2, "0")}</span>
+                <span className="card-name">{s}</span>
+                <span className="card-copy">{SERVICE_COPY[s]}</span>
+              </span>
+            </label>
+          ))}
+        </div>
       </fieldset>
 
       <label>
