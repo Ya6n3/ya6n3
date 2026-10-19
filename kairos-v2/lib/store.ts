@@ -10,6 +10,8 @@ export interface Store {
   /** Sets `key` only if it does not exist. Returns true if this call set it. */
   setOnce(key: string, value: string, ttlSeconds: number): Promise<boolean>;
   get(key: string): Promise<string | null>;
+  /** Sets `key`, replacing any existing value. */
+  set(key: string, value: string, ttlSeconds: number): Promise<void>;
   del(key: string): Promise<void>;
   /** Increments a counter, setting its TTL on first use. Returns the new value. */
   incr(key: string, ttlSeconds: number): Promise<number>;
@@ -36,6 +38,9 @@ export function createMemoryStore(now = Date.now): Store {
     async get(key) {
       return live(key)?.value ?? null;
     },
+    async set(key, value, ttl) {
+      data.set(key, { value, expires: now() + ttl * 1000 });
+    },
     async del(key) {
       data.delete(key);
     },
@@ -57,6 +62,9 @@ function createRedisStore(redis: Redis): Store {
     async get(key) {
       const v = await redis.get<string>(key);
       return v == null ? null : String(v);
+    },
+    async set(key, value, ttl) {
+      await redis.set(key, value, { ex: ttl });
     },
     async del(key) {
       await redis.del(key);

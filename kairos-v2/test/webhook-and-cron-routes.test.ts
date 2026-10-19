@@ -47,6 +47,9 @@ describe("POST /api/notion/webhook", () => {
     expect((await POST(signed)).status).toBe(200);
     await Promise.all(pending);
     expect(processPage).toHaveBeenCalledWith("page-1");
+    // The route was imported after a module reset, so read its copy of the store.
+    const { lastEventReceived } = await import("@/lib/notion-webhook");
+    expect(await lastEventReceived()).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
   it("does not let a second handshake replace the stored token", async () => {

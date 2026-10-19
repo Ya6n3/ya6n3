@@ -3,7 +3,7 @@ import { sendApprovedReply, type SendResult } from "./approvals";
 import { buildDigest } from "./digest";
 import { mailConfigured, sendEmail } from "./mailer";
 import { getPage } from "./notion-api";
-import { isPipelinePage, listOpenItems, toItem } from "./pipeline";
+import { isPipelinePage, listOpenItems, toItem, type PipelineItem } from "./pipeline";
 import { researchBlocker, researchItem, type ResearchResult } from "./research";
 import { getStore } from "./store";
 import { nyNow } from "./time";
@@ -16,6 +16,13 @@ export async function processPage(pageId: string): Promise<{ send?: SendResult; 
   const send = await sendApprovedReply(item);
   const research = await researchItem(item);
   return { send, research };
+}
+
+/** Researches up to 5 waiting rows in parallel, staying inside the 300s function limit. */
+export async function researchBacklog(items: PipelineItem[], at: Date = new Date()) {
+  const backlog = items.filter((i) => !researchBlocker(i)).slice(0, 5);
+  return (await Promise.all(backlog.map((i) => researchItem(i, at).then((r) => ({ id: i.id, ...r })))))
+    .filter((r) => r.status !== "skipped");
 }
 
 const DIGEST_HOUR = 8; // 8am New York
@@ -34,10 +41,7 @@ export async function runDaily(at: Date = new Date(), opts: { forceDigest?: bool
     if (r.status !== "skipped") sends.push({ id: item.id, ...r });
   }
 
-  // Research backlog: at most 5 rows, in parallel, to stay inside the 300s function limit.
-  const backlog = items.filter((i) => !researchBlocker(i)).slice(0, 5);
-  const research = (await Promise.all(backlog.map((i) => researchItem(i, at).then((r) => ({ id: i.id, ...r })))))
-    .filter((r) => r.status !== "skipped");
+  const research = await researchBacklog(items, at);
 
   const ny = nyNow(at);
   let digest: string = "not-due";

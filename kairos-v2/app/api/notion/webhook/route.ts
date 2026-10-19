@@ -2,6 +2,7 @@ import { after, NextResponse } from "next/server";
 import { processPage } from "@/lib/automations";
 import {
   HANDLED_EVENTS,
+  noteEventReceived,
   rememberVerificationToken,
   signatureMatches,
   webhookSecret,
@@ -39,6 +40,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
 
+  await noteEventReceived().catch(() => {});
   const event = body as unknown as NotionEvent;
   if (HANDLED_EVENTS.has(event.type) && event.entity?.type === "page" && event.entity.id) {
     // Acknowledge now; do the work after the response so Notion doesn't time out and retry.

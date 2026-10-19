@@ -211,3 +211,17 @@ input:focus, textarea:focus { border-bottom-color: var(--accent); box-shadow: 0 
 :focus-visible { outline-color: var(--accent); }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } .card-face { transform: none !important; } }
+
+/* ---------- /setup (private owner page) ---------- */
+.setup h1 { font-family: var(--font-display-stack); font-size: clamp(30px, 4vw, 42px); line-height: 1.1; margin-bottom: 40px; }
+.setup code { font-size: 13px; }
+.checks { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--rule); }
+.check { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 16px; padding: 20px 0; border-bottom: 1px solid var(--rule); }
+.check h2 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+.check p { font-size: 14px; color: var(--body); }
+.check-state { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--muted); padding-top: 3px; }
+.check--ok .check-state { color: var(--fg); }
+.check--todo .check-state { color: var(--accent-text); font-weight: 500; }
+.check-copy { display: block; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--rule); word-break: break-all; user-select: all; }
+.check-result { margin-top: 28px; }
+.check-run { margin-top: 40px; display: grid; gap: 16px; }
