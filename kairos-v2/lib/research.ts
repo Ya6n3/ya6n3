@@ -1,5 +1,5 @@
 import "server-only";
-import { appendParagraphs, richText, updatePage } from "./notion-api";
+import { appendParagraphs, NotionError, notionHint, richText, updatePage } from "./notion-api";
 import { isTest, type PipelineItem } from "./pipeline";
 import { getStore } from "./store";
 import { nyNow } from "./time";
@@ -127,7 +127,20 @@ async function callClaude(item: PipelineItem, today: string): Promise<string> {
 
 export type ResearchResult = { status: "done" } | { status: "skipped"; reason: string } | { status: "failed"; reason: string };
 
-/** Researches one row and writes Options + Research Notes. Idempotent and cost-capped. */
+interface CachedResearch {
+  options: string;
+  notes: string;
+  date: string;
+}
+
+/**
+ * Researches one row and writes Options + Research Notes. Idempotent and cost-capped.
+ *
+ * Claude's result is cached before it is written to Notion, so if the write fails
+ * (e.g. the integration lacks "Update content"), the next attempt reuses the paid
+ * research instead of calling Claude again. Only Claude failures count toward the
+ * give-up limit; Notion permission problems are configuration, not bad requests.
+ */
 export async function researchItem(item: PipelineItem, at: Date = new Date()): Promise<ResearchResult> {
   const blocker = researchBlocker(item);
   if (blocker) return { status: "skipped", reason: blocker };
@@ -138,29 +151,60 @@ export async function researchItem(item: PipelineItem, at: Date = new Date()): P
   const lockKey = `kairos:research:${item.id}`;
   if (!(await store.setOnce(lockKey, at.toISOString(), 15 * 60))) return { status: "skipped", reason: "in-progress" };
 
-  // Cost guards: a daily cap across all rows, and at most 2 failed attempts per row.
-  const dailyLimit = Number(process.env.RESEARCH_DAILY_LIMIT || 20);
-  const failKey = `kairos:research-fail:${item.id}`;
-  if (Number((await store.get(failKey)) ?? 0) >= 2) return { status: "skipped", reason: "gave-up-after-failures" };
-  if ((await store.incr(`kairos:research-count:${today}`, 60 * 60 * 48)) > dailyLimit) {
-    await store.del(lockKey);
-    return { status: "skipped", reason: "daily-limit" };
+  const cacheKey = `kairos:research-result:${item.id}`;
+  let research: CachedResearch | null = null;
+  const cached = await store.get(cacheKey);
+  if (cached) {
+    try {
+      research = JSON.parse(cached) as CachedResearch;
+    } catch {
+      research = null;
+    }
+  }
+
+  if (!research) {
+    // Cost guards: at most 2 failed Claude attempts per row, and a daily cap across all rows.
+    const failKey = `kairos:research-claude-fail:${item.id}`;
+    if (Number((await store.get(failKey)) ?? 0) >= 2) {
+      await store.del(lockKey);
+      return { status: "skipped", reason: "gave-up-after-failures" };
+    }
+    const dailyLimit = Number(process.env.RESEARCH_DAILY_LIMIT || 20);
+    if ((await store.incr(`kairos:research-count:${today}`, 60 * 60 * 48)) > dailyLimit) {
+      await store.del(lockKey);
+      return { status: "skipped", reason: "daily-limit" };
+    }
+    try {
+      const parsed = parseResearch(await callClaude(item, today));
+      if (!parsed.options && !parsed.notes) throw new Error("empty research reply");
+      research = { ...parsed, date: today };
+      await store.setOnce(cacheKey, JSON.stringify(research), 60 * 60 * 24 * 7);
+    } catch (err) {
+      await store.incr(failKey, 60 * 60 * 24);
+      await store.del(lockKey);
+      const reason = err instanceof Error ? err.message : String(err);
+      await appendParagraphs(item.id, [`⚠️ Kairos research failed (${at.toISOString()}): ${reason}. It will retry once more.`]).catch(() => {});
+      return { status: "failed", reason };
+    }
   }
 
   try {
-    const { options, notes } = parseResearch(await callClaude(item, today));
-    if (!options && !notes) throw new Error("empty research reply");
     await updatePage(item.id, {
-      Options: { rich_text: richText(options) },
-      "Research Notes": { rich_text: richText(`${notes}\n\n(Researched by Kairos on ${today} with web search. Verify prices and availability before booking.)`) },
+      Options: { rich_text: richText(research.options) },
+      "Research Notes": {
+        rich_text: richText(`${research.notes}\n\n(Researched by Kairos on ${research.date} with web search. Verify prices and availability before booking.)`),
+      },
       "Last Agent Action": { date: { start: at.toISOString() } },
     });
+    await store.del(cacheKey);
     return { status: "done" };
   } catch (err) {
-    await store.incr(failKey, 60 * 60 * 24);
     await store.del(lockKey);
     const reason = err instanceof Error ? err.message : String(err);
-    await appendParagraphs(item.id, [`⚠️ Kairos research failed (${at.toISOString()}): ${reason}`]).catch(() => {});
+    const hint = err instanceof NotionError ? notionHint(err.status) : "";
+    await appendParagraphs(item.id, [
+      `⚠️ Kairos researched this request but could not save it to Options / Research Notes (${reason}). ${hint} The research is kept and will be saved on the next run.`,
+    ]).catch(() => {});
     return { status: "failed", reason };
   }
 }

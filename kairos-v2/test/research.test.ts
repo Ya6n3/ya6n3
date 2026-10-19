@@ -95,6 +95,31 @@ describe("researchItem", () => {
     expect(calls).toHaveLength(0);
   });
 
+  it("keeps paid research when Notion refuses the write, and reuses it next time", async () => {
+    let notionStatus = 403;
+    let claudeCalls = 0;
+    const calls = mockFetch([
+      [/^POST https:\/\/api\.anthropic\.com\//, () => (claudeCalls++, [200, { stop_reason: "end_turn", content: [{ type: "text", text: REPLY }] }])],
+      [/^PATCH https:\/\/api\.notion\.com\/v1\/pages\//, () => [notionStatus, {}]],
+      [/^PATCH https:\/\/api\.notion\.com\/v1\/blocks\//, () => [200, {}]],
+    ]);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    // Three runs while the integration can't edit: Claude is called once, never given up on.
+    for (let i = 0; i < 3; i++) expect(await researchItem(item(), AT)).toEqual({ status: "failed", reason: "Notion API error 403" });
+    expect(claudeCalls).toBe(1);
+    const note = JSON.stringify(calls.filter((c) => c.url.includes("/blocks/")).at(-1)!.body);
+    expect(note).toContain("Update content");
+    expect(note).toContain("will be saved on the next run");
+
+    // Permission fixed: the cached research is written without paying for it again.
+    notionStatus = 200;
+    expect(await researchItem(item(), AT)).toEqual({ status: "done" });
+    expect(claudeCalls).toBe(1);
+    const write = calls.filter((c) => c.method === "PATCH" && c.url.includes("/pages/")).at(-1)!;
+    expect(write.body.properties.Options.rich_text[0].text.content).toMatch(/^1\. Via Carota/);
+  });
+
   it("gives up on a row after two failures instead of burning money", async () => {
     routes(() => [529, { error: "overloaded" }]);
     expect(await researchItem(item(), AT)).toMatchObject({ status: "failed" });
