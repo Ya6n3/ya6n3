@@ -20,6 +20,22 @@ export function richText(text: string) {
   return chunks;
 }
 
+export class NotionError extends Error {
+  constructor(readonly status: number) {
+    super(`Notion API error ${status}`);
+  }
+}
+
+/** A plain-language hint for the operator, shown on the page when Notion refuses a write. */
+export function notionHint(status: number): string {
+  if (status === 403)
+    return "The Notion integration can read this row but may not edit it. In notion.so/profile/integrations, turn on 'Update content' for the integration and save.";
+  if (status === 404)
+    return "The Notion integration can't see this row. Add it to the Agent Pipeline database under ••• → Connections.";
+  if (status === 401) return "NOTION_TOKEN in Vercel is invalid or revoked.";
+  return "Notion returned an error; it will retry automatically.";
+}
+
 export async function notion<T = unknown>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: init.method ?? "GET",
@@ -34,7 +50,7 @@ export async function notion<T = unknown>(path: string, init: { method?: string;
   if (!res.ok) {
     const text = await res.text();
     console.error("Notion API error", init.method ?? "GET", path, res.status, text.slice(0, 500));
-    throw new Error(`Notion API error ${res.status}`);
+    throw new NotionError(res.status);
   }
   return (await res.json()) as T;
 }
