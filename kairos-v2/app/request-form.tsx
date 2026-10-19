@@ -39,11 +39,11 @@ export function RequestForm() {
 
   if (status === "sent") {
     return (
-      <div className="card confirm" role="status">
+      <div className="req confirm" role="status">
         <p className="eyebrow">Received</p>
         <h2>Thank you. Your request is with the team.</h2>
         <p>We read every request and reply personally by email with next steps.</p>
-        <button className="ghost" onClick={() => setStatus("idle")}>
+        <button className="btn btn--secondary" onClick={() => setStatus("idle")}>
           Send another request
         </button>
       </div>
@@ -51,7 +51,7 @@ export function RequestForm() {
   }
 
   return (
-    <form className="card" onSubmit={onSubmit} noValidate>
+    <form className="req" onSubmit={onSubmit} noValidate>
       <div className="row">
         <label>
           <span>Name</span>
@@ -125,10 +125,12 @@ export function RequestForm() {
         </ul>
       )}
 
-      <button type="submit" disabled={status === "sending"}>
+      <button className="btn btn--primary" type="submit" disabled={status === "sending"}>
         {status === "sending" ? "Sending…" : "Send request"}
       </button>
-      <p className="fine">Nothing is booked without your go-ahead.</p>
+      <p className="fine">
+        Requests are handled privately and shared only with the people needed to arrange them.
+      </p>
     </form>
   );
 }
