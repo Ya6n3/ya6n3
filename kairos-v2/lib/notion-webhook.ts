@@ -6,6 +6,7 @@ import { getStore } from "./store";
 // Signature: X-Notion-Signature = "sha256=" + HMAC-SHA256(raw body, verification_token).
 
 const TOKEN_KEY = "kairos:notion:verification-token";
+const LAST_EVENT_KEY = "kairos:notion:last-event";
 
 export function sign(body: string, secret: string): string {
   return `sha256=${createHmac("sha256", secret).update(body).digest("hex")}`;
@@ -30,6 +31,20 @@ export async function webhookSecret(): Promise<string | null> {
 /** Stores the one-time verification token. Returns false if one is already stored. */
 export async function rememberVerificationToken(token: string): Promise<boolean> {
   return getStore().setOnce(TOKEN_KEY, token, 60 * 60 * 24 * 3650);
+}
+
+/** Reads the stored verification token (shown on /setup so it can be pasted into Notion). */
+export async function storedVerificationToken(): Promise<string | null> {
+  return getStore().get(TOKEN_KEY);
+}
+
+/** Records when a signed event last arrived, so /setup can show the webhook is live. */
+export async function noteEventReceived(at: Date = new Date()): Promise<void> {
+  await getStore().set(LAST_EVENT_KEY, at.toISOString(), 60 * 60 * 24 * 30);
+}
+
+export async function lastEventReceived(): Promise<string | null> {
+  return getStore().get(LAST_EVENT_KEY);
 }
 
 export interface NotionEvent {

@@ -109,10 +109,16 @@ Resend's free tier covers this volume.
    `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `DIGEST_TO`, `CRON_SECRET`. Redeploy.
 4. **Notion webhook**: integration settings → Webhooks → Create subscription →
    `https://<your-domain>/api/notion/webhook`, events `page.created` and `page.properties_updated`.
-   Notion posts a verification token: find it in Vercel → Logs (search `verification_token`),
-   paste it into Notion's **Verify** dialog.
+   Notion posts a verification token: it appears on the `/setup` page (or in Vercel → Logs,
+   search `verification_token`); paste it into Notion's **Verify** dialog.
 5. **Zapier**: in *Kairos - Xenia Intake*, delete step 7 (Gmail Create Draft) so there's one
    way to send. Steps 1–6 keep writing the Draft Reply into Notion.
+
+**Check it**: open `https://<your-domain>/setup?key=<CRON_SECRET>`. The page tests each piece
+live (Notion access to both databases, the Anthropic key, the webhook, Upstash, email) and says in
+plain words what's left. It also lists requests waiting for research, with a button to research
+them now instead of waiting for the webhook or the daily cron. It shows no secrets except the
+Notion verification token you need to paste into Notion.
 
 Test: submit the form with your own email, wait for the Draft Reply and Options to appear,
 tick Approved, and the email should arrive within a couple of minutes.
