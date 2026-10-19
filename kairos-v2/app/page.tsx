@@ -1,3 +1,4 @@
+import { Armillary } from "./armillary";
 import { RequestForm } from "./request-form";
 
 export default function Home() {
@@ -13,16 +14,46 @@ export default function Home() {
       </header>
 
       <main>
-        <section className="intro">
-          <p className="eyebrow">Request a service</p>
-          <h1>
-            Tell us what you need.
-            <em>We&rsquo;ll take it from here.</em>
-          </h1>
-          <p className="lead">
-            Tables, travel, tickets, errands and the things in between. A member of the team
-            reviews every request personally and replies by email.
-          </p>
+        <section className="hero">
+          <div className="hero-text">
+            <p className="eyebrow rise" style={{ "--d": "0ms" } as React.CSSProperties}>
+              Request a service
+            </p>
+            <h1>
+              <span className="rise" style={{ "--d": "80ms" } as React.CSSProperties}>
+                Tell us what you need.
+              </span>
+              <em className="rise" style={{ "--d": "220ms" } as React.CSSProperties}>
+                We&rsquo;ll take it from here.
+              </em>
+            </h1>
+            <p className="lead rise" style={{ "--d": "380ms" } as React.CSSProperties}>
+              Tables, travel, tickets, errands and the things in between. A member of the team
+              reviews every request personally and replies by email.
+            </p>
+            <a className="btn btn--primary hero-cta rise" href="#request" style={{ "--d": "520ms" } as React.CSSProperties}>
+              Begin a request
+            </a>
+          </div>
+          <div className="hero-art rise" style={{ "--d": "300ms" } as React.CSSProperties}>
+            <Armillary />
+          </div>
+        </section>
+
+        <section className="time" aria-labelledby="time-h">
+          <h2 id="time-h" className="eyebrow">Two kinds of time</h2>
+          <div className="time-grid">
+            <div>
+              <p className="greek" lang="grc">χρόνος</p>
+              <p className="pron">chronos</p>
+              <p>The hours that pass: the calls, the holds, the follow-ups, the waiting in.</p>
+            </div>
+            <div>
+              <p className="greek" lang="grc">καιρός</p>
+              <p className="pron">kairos</p>
+              <p>The moment that matters. We look after the first so you can keep the second.</p>
+            </div>
+          </div>
         </section>
 
         <ol className="steps" aria-label="What happens next">
@@ -43,7 +74,7 @@ export default function Home() {
           </li>
         </ol>
 
-        <div className="sheet">
+        <div className="sheet" id="request">
           <RequestForm />
         </div>
       </main>
@@ -53,7 +84,7 @@ export default function Home() {
         <p>
           Prefer email? <a href="mailto:concierge@kairosnyc.io">concierge@kairosnyc.io</a>
         </p>
-        <p className="greek">
+        <p className="greek-line">
           <span lang="grc">καιρός</span> · the right moment
         </p>
       </footer>
