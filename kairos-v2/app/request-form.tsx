@@ -1,19 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { SERVICES, type Service } from "@/lib/intake";
-
-// One line per service, in the website's words.
-const SERVICE_COPY: Record<Service, string> = {
-  Tables: "The hard-to-get table, the private room, the chef\u2019s counter on a Tuesday.",
-  Travel: "Flights, cars and hotels planned around your meetings, and re-planned when they move.",
-  Access: "Openings, matches, galas and the shows everyone is talking about.",
-  "Bespoke sourcing": "Gifts with a reason behind them, the hard-to-find bottle, the piece in the right size.",
-  Home: "Repairs, deliveries, cleaners and contractors, followed through so you are not the one waiting in.",
-  Wellbeing: "Trainers, treatments and appointments booked into the gaps in your week.",
-  "Family & guests": "Birthdays, visiting parents, the weekend for eight. Every detail held in one place.",
-  "Something else": "Anything else that can be arranged. Tell us in a sentence.",
-};
+import { SERVICES } from "@/lib/intake";
 
 // Cards lean toward the pointer, a few degrees at most.
 function tilt(e: React.PointerEvent<HTMLLabelElement>) {
@@ -22,7 +10,7 @@ function tilt(e: React.PointerEvent<HTMLLabelElement>) {
   const x = (e.clientX - r.left) / r.width - 0.5;
   const y = (e.clientY - r.top) / r.height - 0.5;
   e.currentTarget.style.setProperty("--ry", `${x * 10}deg`);
-  e.currentTarget.style.setProperty("--rx", `${-y * 10}deg`);
+  e.currentTarget.style.setProperty("--rx", `${-y * 8}deg`);
   e.currentTarget.style.setProperty("--gx", `${(x + 0.5) * 100}%`);
   e.currentTarget.style.setProperty("--gy", `${(y + 0.5) * 100}%`);
 }
@@ -109,7 +97,6 @@ export function RequestForm() {
               <span className="card-face">
                 <span className="card-num">{String(i + 1).padStart(2, "0")}</span>
                 <span className="card-name">{s}</span>
-                <span className="card-copy">{SERVICE_COPY[s]}</span>
               </span>
             </label>
           ))}
@@ -120,7 +107,7 @@ export function RequestForm() {
         <span>What do you need?</span>
         <textarea
           name="details"
-          rows={6}
+          rows={5}
           required
           minLength={10}
           maxLength={4000}
