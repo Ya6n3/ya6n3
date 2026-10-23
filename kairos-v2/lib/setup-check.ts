@@ -2,18 +2,25 @@ import "server-only";
 import { timingSafeEqual } from "node:crypto";
 import { mailConfigured } from "./mailer";
 import { notion, NotionError } from "./notion-api";
-import { lastEventReceived, storedVerificationToken } from "./notion-webhook";
+import { lastEventReceived, pendingToken, webhookActive } from "./notion-webhook";
 import { listOpenItems, pipelineDatabaseId, type PipelineItem } from "./pipeline";
 import { researchBlocker } from "./research";
 import { getStore } from "./store";
 
 // Powers /setup: a private page that says, in plain words, which part of the
-// automations is not set up yet. It never shows secrets except the Notion
+// automations is not set up yet. It never shows secrets except the pending Notion
 // verification token, which the owner has to paste into Notion anyway.
 
-/** True when `given` is the CRON_SECRET. The setup page is locked without it. */
+/**
+ * The key that unlocks /setup: SETUP_KEY, or CRON_SECRET if SETUP_KEY is not set.
+ * Prefer a separate SETUP_KEY: the key travels in the URL, so keeping it apart
+ * from CRON_SECRET means a leaked setup link cannot call the cron routes.
+ */
+const setupKey = () => process.env.SETUP_KEY || process.env.CRON_SECRET;
+
+/** True when `given` is the setup key. The setup page is locked without it. */
 export function setupKeyMatches(given: string | null | undefined): boolean {
-  const secret = process.env.CRON_SECRET;
+  const secret = setupKey();
   if (!secret || !given) return false;
   const a = Buffer.from(given);
   const b = Buffer.from(secret);
@@ -58,19 +65,19 @@ async function anthropicCheck(): Promise<Check> {
   return { label, state: "ok", detail: "The API key works." };
 }
 
-async function webhookCheck(shared: boolean): Promise<Check> {
+async function webhookCheck(shared: boolean, pending: string | null): Promise<Check> {
   const label = "Notion webhook";
   const last = await lastEventReceived();
   if (last) return { label, state: "ok", detail: `Last event from Notion: ${last}.` };
   if (process.env.NOTION_WEBHOOK_SECRET)
     return { label, state: "waiting", detail: "The secret is set, but no event has arrived yet. Edit any Agent Pipeline row to test." };
-  const token = await storedVerificationToken();
-  if (token)
+  if (await webhookActive())
+    return { label, state: "waiting", detail: "The token is saved, but no event has arrived yet. Edit any Agent Pipeline row to test." };
+  if (pending)
     return {
       label,
       state: "waiting",
-      detail: "Notion sent its token. Paste it into Notion's Verify dialog (integration settings → Webhooks), then edit any Agent Pipeline row.",
-      copy: token,
+      detail: "Notion sent its token (shown below). Paste it into Notion's Verify dialog, and once Notion says it is verified, press “Use this token”.",
     };
   return {
     label,
@@ -83,6 +90,8 @@ async function webhookCheck(shared: boolean): Promise<Check> {
 
 export interface SetupReport {
   checks: Check[];
+  /** The token Notion last posted to the webhook, waiting to be pasted into Notion and promoted. */
+  pendingToken: string | null;
   /** Agent Pipeline rows that are waiting for research, when the pipeline is readable. */
   waiting: PipelineItem[] | null;
 }
@@ -102,7 +111,8 @@ export async function runSetupChecks(): Promise<SetupReport> {
     ),
     anthropicCheck(),
   ]);
-  const webhook = await webhookCheck(shared);
+  const pending = await pendingToken();
+  const webhook = await webhookCheck(shared, pending);
 
   const checks: Check[] = [
     intake,
@@ -118,8 +128,10 @@ export async function runSetupChecks(): Promise<SetupReport> {
     },
     {
       label: "Daily safety net (cron)",
-      state: "ok",
-      detail: "CRON_SECRET is set, so the 12:00 and 13:00 UTC runs pick up anything the webhook missed.",
+      state: process.env.CRON_SECRET ? "ok" : "todo",
+      detail: process.env.CRON_SECRET
+        ? "CRON_SECRET is set, so the 12:00 and 13:00 UTC runs pick up anything the webhook missed."
+        : "Add CRON_SECRET (any long random text) in Vercel, then redeploy. Without it the daily runs are refused.",
     },
     {
       label: "Sending email (Resend)",
@@ -140,5 +152,5 @@ export async function runSetupChecks(): Promise<SetupReport> {
   if (pipeline.state === "ok") {
     waiting = (await listOpenItems().catch(() => null))?.filter((i) => !researchBlocker(i)) ?? null;
   }
-  return { checks, waiting };
+  return { checks, pendingToken: pending, waiting };
 }

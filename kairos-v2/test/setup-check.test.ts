@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { noteEventReceived, rememberVerificationToken } from "@/lib/notion-webhook";
+import { useWebhookToken } from "@/app/setup/actions";
+import { noteEventReceived, pendingToken, promoteToken, rememberPendingToken, webhookSecret } from "@/lib/notion-webhook";
 import { runSetupChecks, setupKeyMatches } from "@/lib/setup-check";
 import { createMemoryStore, setStore } from "@/lib/store";
 import { mockFetch, page, setEnv } from "./helpers";
@@ -27,12 +28,37 @@ const byLabel = async () => {
 };
 
 describe("setupKeyMatches", () => {
-  it("only opens with the exact CRON_SECRET", () => {
+  it("falls back to the exact CRON_SECRET when there is no SETUP_KEY", () => {
     expect(setupKeyMatches("cron-test")).toBe(true);
     expect(setupKeyMatches("cron-tes")).toBe(false);
     expect(setupKeyMatches(undefined)).toBe(false);
     setEnv({ CRON_SECRET: undefined });
     expect(setupKeyMatches("")).toBe(false);
+  });
+
+  it("uses SETUP_KEY on its own, so a leaked setup link is not the cron secret", () => {
+    setEnv({ SETUP_KEY: "setup-test" });
+    expect(setupKeyMatches("setup-test")).toBe(true);
+    expect(setupKeyMatches("cron-test")).toBe(false);
+  });
+});
+
+describe("useWebhookToken", () => {
+  const form = (fields: Record<string, string>) => {
+    const fd = new FormData();
+    for (const [k, v] of Object.entries(fields)) fd.set(k, v);
+    return fd;
+  };
+
+  it("promotes the token only for someone holding the setup key", async () => {
+    await rememberPendingToken("secret_from_notion");
+
+    await expect(useWebhookToken(form({ key: "wrong", token: "secret_from_notion" }))).rejects.toThrow();
+    expect(await webhookSecret()).toBeNull();
+
+    await expect(useWebhookToken(form({ key: "cron-test", token: "secret_from_notion" }))).rejects.toThrow(); // redirects back to /setup
+    expect(await webhookSecret()).toBe("secret_from_notion");
+    expect(await pendingToken()).toBeNull();
   });
 });
 
@@ -56,8 +82,15 @@ describe("runSetupChecks", () => {
     routes();
     expect((await byLabel()).c["Notion webhook"].state).toBe("todo");
 
-    await rememberVerificationToken("secret_verify_me");
-    expect((await byLabel()).c["Notion webhook"]).toMatchObject({ state: "waiting", copy: "secret_verify_me" });
+    await rememberPendingToken("secret_verify_me");
+    const received = await byLabel();
+    expect(received.c["Notion webhook"]).toMatchObject({ state: "waiting", detail: expect.stringContaining("Use this token") });
+    expect(received.pendingToken).toBe("secret_verify_me");
+
+    await promoteToken("secret_verify_me");
+    const saved = await byLabel();
+    expect(saved.c["Notion webhook"]).toMatchObject({ state: "waiting", detail: expect.stringContaining("token is saved") });
+    expect(saved.pendingToken).toBeNull();
 
     await noteEventReceived(new Date("2026-10-20T01:00:00Z"));
     expect((await byLabel()).c["Notion webhook"]).toMatchObject({ state: "ok", detail: expect.stringContaining("2026-10-20T01:00:00") });

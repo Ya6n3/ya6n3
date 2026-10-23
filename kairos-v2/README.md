@@ -98,7 +98,10 @@ to send; a Redis lock and Resend idempotency key prevent duplicates; research is
 is treated as untrusted input in the research prompt and escaped in emails.
 
 Cost: research ≈ $0.05–0.15 per request (Claude Sonnet tokens + up to 5 searches at $10/1,000);
-Resend's free tier covers this volume.
+Resend's free tier covers this volume. That estimate predates the explicit thinking effort
+(`RESEARCH_EFFORT`, default `medium`) and the larger token ceiling, so check the first week's
+real spend in the Anthropic console. If a request still comes back empty, the note on the Notion
+row now says why (for example, ran out of tokens, or declined).
 
 ### Setup
 
@@ -106,26 +109,38 @@ Resend's free tier covers this volume.
    and add the integration to the **Agent Pipeline** database (••• → Connections).
 2. **Resend**: create an account, add and verify your sending domain (DNS records), create an API key.
 3. **Vercel env vars** (Settings → Environment Variables, Production): `ANTHROPIC_API_KEY`,
-   `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `DIGEST_TO`, `CRON_SECRET`. Redeploy.
+   `RESEND_API_KEY`, `MAIL_FROM`, `MAIL_REPLY_TO`, `DIGEST_TO`, `CRON_SECRET`, `SETUP_KEY`
+   (a different long random string: it unlocks `/setup`, so a leaked setup link never works
+   on the cron routes). Redeploy.
 4. **Notion webhook**: integration settings → Webhooks → Create subscription →
    `https://<your-domain>/api/notion/webhook`, events `page.created` and `page.properties_updated`.
-   Notion posts a verification token: it appears on the `/setup` page (or in Vercel → Logs,
-   search `verification_token`); paste it into Notion's **Verify** dialog.
+   Notion posts a verification token to that address. Because the address is public, the app
+   only holds the token as *pending* (it is never written to the logs) and shows it on the
+   `/setup` page. Paste it into Notion's **Verify** dialog; **only once Notion says it is
+   verified**, press **Use this token** on `/setup`. Until then no event is trusted.
+   (Alternatively set `NOTION_WEBHOOK_SECRET` in Vercel to that token; it takes priority.)
+   Needs Upstash Redis, or the pending token can be lost between requests.
 5. **Zapier**: in *Kairos - Xenia Intake*, delete step 7 (Gmail Create Draft) so there's one
    way to send. Steps 1–6 keep writing the Draft Reply into Notion.
 
-**Check it**: open `https://<your-domain>/setup?key=<CRON_SECRET>`. The page tests each piece
+**Check it**: open `https://<your-domain>/setup?key=<SETUP_KEY>` (it falls back to `CRON_SECRET`
+if you have not set a `SETUP_KEY`). The page tests each piece
 live (Notion access to both databases, the Anthropic key, the webhook, Upstash, email) and says in
 plain words what's left. It also lists requests waiting for research, with a button to research
 them now instead of waiting for the webhook or the daily cron. It shows no secrets except the
-Notion verification token you need to paste into Notion.
+pending Notion verification token you need to paste into Notion. The key is in the URL, so the
+site sends `Referrer-Policy: no-referrer` and `/setup` is never cached or framed; still, treat
+the link as private and rotate `SETUP_KEY` if it leaks.
 
 Test: submit the form with your own email, wait for the Draft Reply and Options to appear,
 tick Approved, and the email should arrive within a couple of minutes.
 
 ## Built-in protections
 
-- Server-side validation of every field and length limits.
+- Server-side validation of every field and length limits; non-object JSON bodies get a 400.
+- Notion webhook events are checked against an HMAC signature, and the setup handshake on the
+  public endpoint cannot choose the signing secret (see Setup, step 4).
+- Cron routes compare their secret in constant time.
 - Honeypot field to drop simple bots silently.
 - Per-IP rate limit (5 per 10 minutes), shared across instances via Upstash Redis when
   configured; falls back to in-memory and fails open if Redis is down.

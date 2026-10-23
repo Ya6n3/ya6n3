@@ -105,6 +105,8 @@ export function setEnv(extra: Record<string, string | undefined> = {}) {
     "MAIL_BCC",
     "MAIL_SUBJECT",
     "RESEARCH_DAILY_LIMIT",
+    "RESEARCH_EFFORT",
+    "SETUP_KEY",
   ])
     delete process.env[k];
   Object.assign(process.env, BASE_ENV);

@@ -17,7 +17,11 @@ export async function POST(request: Request) {
 
   let body: Record<string, unknown>;
   try {
-    body = await request.json();
+    const parsed: unknown = await request.json();
+    // Valid JSON is not always an object (`null`, `"x"`, `42`, `[]`); reject those
+    // here instead of letting the property reads below throw.
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Error("not an object");
+    body = parsed as Record<string, unknown>;
   } catch {
     return NextResponse.json({ ok: false, errors: ["Invalid request."] }, { status: 400 });
   }

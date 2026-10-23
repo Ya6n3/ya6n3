@@ -49,9 +49,17 @@ export async function runDaily(at: Date = new Date(), opts: { forceDigest?: bool
   if (!to || !mailConfigured()) digest = "not-configured";
   else if (opts.forceDigest || ny.hour === DIGEST_HOUR) {
     const fresh = await listOpenItems(); // reflect the sends above
-    if (opts.forceDigest || (await getStore().setOnce(`kairos:digest:${ny.date}`, at.toISOString(), 60 * 60 * 48))) {
+    const store = getStore();
+    const digestKey = `kairos:digest:${ny.date}`;
+    if (opts.forceDigest || (await store.setOnce(digestKey, at.toISOString(), 60 * 60 * 48))) {
       const d = buildDigest(fresh, ny.date, at);
-      await sendEmail({ to, subject: d.subject, text: d.text, html: d.html, idempotencyKey: opts.forceDigest ? undefined : `kairos-digest-${ny.date}` });
+      try {
+        await sendEmail({ to, subject: d.subject, text: d.text, html: d.html, idempotencyKey: opts.forceDigest ? undefined : `kairos-digest-${ny.date}` });
+      } catch (err) {
+        // Free the slot: a failed send must not read as "already sent today" on the next run.
+        if (!opts.forceDigest) await store.del(digestKey);
+        throw err;
+      }
       digest = "sent";
     } else digest = "already-sent-today";
   }

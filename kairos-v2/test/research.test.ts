@@ -88,6 +88,46 @@ describe("researchItem", () => {
     expect(update.body.properties["Research Notes"].rich_text[0].text.content).toContain("Verify prices");
   });
 
+  it("leaves room for thinking and sets an explicit effort", async () => {
+    const calls = routes(() => [200, { stop_reason: "end_turn", content: [{ type: "text", text: REPLY }] }]);
+    await researchItem(item(), AT);
+    const body = calls.find((c) => c.url.includes("anthropic"))!.body;
+    expect(body.max_tokens).toBe(8000);
+    expect(body.output_config).toEqual({ effort: "medium" });
+  });
+
+  it("takes the effort from RESEARCH_EFFORT, and omits it when set to none", async () => {
+    setEnv({ RESEARCH_EFFORT: "high" });
+    let calls = routes(() => [200, { stop_reason: "end_turn", content: [{ type: "text", text: REPLY }] }]);
+    await researchItem(item(), AT);
+    expect(calls.find((c) => c.url.includes("anthropic"))!.body.output_config).toEqual({ effort: "high" });
+
+    setStore(createMemoryStore());
+    setEnv({ RESEARCH_EFFORT: "none" });
+    calls = routes(() => [200, { stop_reason: "end_turn", content: [{ type: "text", text: REPLY }] }]);
+    await researchItem(item(), AT);
+    expect(calls.find((c) => c.url.includes("anthropic"))!.body).not.toHaveProperty("output_config");
+  });
+
+  it.each([
+    ["max_tokens", "ran out of tokens"],
+    ["refusal", "declined"],
+    ["pause_turn", "pause_turn"],
+  ])("says why when Claude returns no text (%s)", async (stop, words) => {
+    const calls = routes(() => [200, { stop_reason: stop, content: [{ type: "thinking", thinking: "" }] }]);
+    const r = await researchItem(item(), AT);
+    expect(r).toMatchObject({ status: "failed", reason: expect.stringContaining(words) });
+    // The reason is written on the Notion row so the operator sees it.
+    expect(JSON.stringify(calls.filter((c) => c.url.includes("/blocks/")).at(-1)!.body)).toContain(words);
+  });
+
+  it("keeps a reply that was cut off, and says so", async () => {
+    const calls = routes(() => [200, { stop_reason: "max_tokens", content: [{ type: "text", text: REPLY }] }]);
+    expect(await researchItem(item(), AT)).toEqual({ status: "done" });
+    const update = calls.find((c) => c.method === "PATCH" && c.url.includes("/pages/"))!;
+    expect(update.body.properties["Research Notes"].rich_text[0].text.content).toContain("cut off");
+  });
+
   it("respects the daily cost cap", async () => {
     setEnv({ RESEARCH_DAILY_LIMIT: "0" });
     const calls = routes(() => [200, { stop_reason: "end_turn", content: [{ type: "text", text: REPLY }] }]);
