@@ -1,42 +1,34 @@
-# Hi, I'm Yassine
+# Yassine
 
-Software Engineer focused on building AI-powered products and modern web applications.
+**Software Engineer · Founder of NFTW**
 
-## Building
+I build AI-powered products and modern web applications.
 
-- AI-powered concierge systems
-- Automation tools for busy professionals
-- Full-stack SaaS applications
-- Consumer products powered by AI
+---
 
-## Technologies
+### What I work on
 
-Frontend
-- Next.js
-- React
-- TypeScript
-- Tailwind CSS
+- **AI concierge systems**: assistants that handle scheduling, reservations, and travel logistics
+- **Automation tools**: workflows that give busy professionals their time back
+- **Full-stack SaaS**: from data model to deployed product
+- **Consumer AI products**: practical AI features people use every day
 
-Backend
-- Node.js
-- PostgreSQL
-- REST APIs
+### Tech stack
 
-AI & Automation
-- OpenAI API
-- AI Agents
-- Workflow Automation
+| Area | Tools |
+| --- | --- |
+| Frontend | Next.js · React · TypeScript · Tailwind CSS |
+| Backend | Node.js · PostgreSQL · REST APIs |
+| AI & Automation | OpenAI API · AI agents · Workflow automation |
 
-## Featured Projects
+### Current projects
 
-### NFTW Concierge
-An AI-powered personal operating system designed to help busy professionals manage reservations, scheduling, travel planning, and everyday logistics.
+**NFTW Concierge**: an AI-powered personal operating system that helps busy professionals manage reservations, scheduling, travel planning, and everyday logistics.
 
-### AI Assistant
-A conversational AI application with memory, authentication, and intelligent task management.
+**AI Assistant**: a conversational AI application with memory, authentication, and intelligent task management.
 
-## Contact
+> Most of my work lives in private repositories. I'm happy to walk through it on request.
 
-LinkedIn
-GitHub
-Email
+### Get in touch
+
+I'm open to collaborations and conversations about AI products. You can reach me through the links on my GitHub profile.
