@@ -50,6 +50,13 @@ describe("POST /api/requests", () => {
     expect((await POST(post("not json"))).status).toBe(400);
   });
 
+  it.each([["null"], ['"hi"'], ["42"], ["true"], ["[]"]])("returns 400, not a crash, for the JSON body %s", async (raw) => {
+    const { POST } = await loadRoute();
+    const res = await POST(post(raw));
+    expect(res.status).toBe(400);
+    expect(createMembershipRequest).not.toHaveBeenCalled();
+  });
+
   it("silently drops honeypot submissions", async () => {
     const { POST } = await loadRoute();
     const res = await POST(post({ ...valid, company_website: "spam.example" }));

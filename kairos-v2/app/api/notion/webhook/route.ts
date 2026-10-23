@@ -3,7 +3,7 @@ import { processPage } from "@/lib/automations";
 import {
   HANDLED_EVENTS,
   noteEventReceived,
-  rememberVerificationToken,
+  rememberPendingToken,
   signatureMatches,
   webhookSecret,
   type NotionEvent,
@@ -23,14 +23,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
 
-  // One-time setup handshake: Notion posts { verification_token } to the URL.
-  // Copy it from the Vercel logs (or Upstash) into Notion's "Verify" dialog.
+  // Setup handshake: Notion posts { verification_token } to the URL. This endpoint
+  // is public, so the token is only held as pending (never logged) until the owner
+  // promotes it on /setup. Until then no event signed with it is accepted.
   if (typeof body.verification_token === "string" && !body.type) {
-    const stored = await rememberVerificationToken(body.verification_token);
-    console.log(
-      `[notion-webhook] verification_token received: ${body.verification_token}` +
-        (stored ? "" : " (a token was already stored; set NOTION_WEBHOOK_SECRET to use this one)"),
-    );
+    await rememberPendingToken(body.verification_token);
+    console.log("[notion-webhook] verification_token received; open /setup to finish.");
     return NextResponse.json({ ok: true });
   }
 

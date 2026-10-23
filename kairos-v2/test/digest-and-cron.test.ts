@@ -91,6 +91,21 @@ describe("runDaily", () => {
     expect(digests(calls)).toHaveLength(1);
   });
 
+  it("frees the digest slot when the send fails, so the next run can try again", async () => {
+    let resendStatus = 500;
+    const calls = mockFetch([
+      [/^POST https:\/\/api\.notion\.com\/v1\/databases\/.+\/query$/, () => [200, { results: [], has_more: false, next_cursor: null }]],
+      [/^POST https:\/\/api\.resend\.com\/emails$/, () => [resendStatus, { id: "email_digest" }]],
+    ]);
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(runDaily(new Date("2026-10-19T12:05:00Z"))).rejects.toThrow("Resend error 500");
+    resendStatus = 200;
+    // Not "already-sent-today": nothing went out the first time.
+    expect((await runDaily(new Date("2026-10-19T12:50:00Z"))).digest).toBe("sent");
+    expect(calls.filter((c) => c.url.includes("resend"))).toHaveLength(2);
+  });
+
   it("sweeps up approved rows a webhook missed, and researches the backlog", async () => {
     const calls = routes([
       page("22222222-1111-2222-3333-444444444444", { approved: true }),

@@ -39,24 +39,55 @@ beforeEach(() => {
 afterEach(() => vi.restoreAllMocks());
 
 describe("POST /api/notion/webhook", () => {
-  it("completes the verification handshake and then accepts events signed with that token", async () => {
+  // The route is imported after a module reset, so import the token helpers after
+  // webhook() too: they then share the route's copy of the store.
+  it("accepts events signed with a token once the owner has promoted it", async () => {
     const POST = await webhook();
+    const { promoteToken, pendingToken, lastEventReceived } = await import("@/lib/notion-webhook");
     expect((await POST(post({ verification_token: "secret_abc" }))).status).toBe(200);
+    expect(await pendingToken()).toBe("secret_abc");
 
-    const signed = post(EVENT, sign(JSON.stringify(EVENT), "secret_abc"));
-    expect((await POST(signed)).status).toBe(200);
+    await promoteToken("secret_abc"); // what "Use this token" on /setup does
+    expect(await pendingToken()).toBeNull();
+
+    expect((await POST(post(EVENT, sign(JSON.stringify(EVENT), "secret_abc")))).status).toBe(200);
     await Promise.all(pending);
     expect(processPage).toHaveBeenCalledWith("page-1");
-    // The route was imported after a module reset, so read its copy of the store.
-    const { lastEventReceived } = await import("@/lib/notion-webhook");
     expect(await lastEventReceived()).toMatch(/^\d{4}-\d{2}-\d{2}T/);
   });
 
-  it("does not let a second handshake replace the stored token", async () => {
+  it("does not trust a token that only arrived at the open endpoint", async () => {
     const POST = await webhook();
-    await POST(post({ verification_token: "secret_real" }));
+    await POST(post({ verification_token: "secret_attacker" }));
+    // Not promoted by the owner, so there is still no secret to verify against.
+    expect((await POST(post(EVENT, sign(JSON.stringify(EVENT), "secret_attacker")))).status).toBe(503);
+    expect(processPage).not.toHaveBeenCalled();
+  });
+
+  it("lets the real token win when an attacker posted first", async () => {
+    const POST = await webhook();
+    const { promoteToken } = await import("@/lib/notion-webhook");
+    await POST(post({ verification_token: "secret_attacker" }));
+    await POST(post({ verification_token: "secret_real" })); // Notion's handshake: latest wins
+    await promoteToken("secret_real");
+    expect((await POST(post(EVENT, sign(JSON.stringify(EVENT), "secret_attacker")))).status).toBe(401);
+    expect((await POST(post(EVENT, sign(JSON.stringify(EVENT), "secret_real")))).status).toBe(200);
+  });
+
+  it("does not let a later handshake replace the promoted token", async () => {
+    const POST = await webhook();
+    const { promoteToken } = await import("@/lib/notion-webhook");
+    await promoteToken("secret_real");
     await POST(post({ verification_token: "secret_attacker" }));
     expect((await POST(post(EVENT, sign(JSON.stringify(EVENT), "secret_attacker")))).status).toBe(401);
+    expect((await POST(post(EVENT, sign(JSON.stringify(EVENT), "secret_real")))).status).toBe(200);
+  });
+
+  it("never writes the verification token to the logs", async () => {
+    const POST = await webhook();
+    const log = vi.mocked(console.log);
+    await POST(post({ verification_token: "secret_do_not_log" }));
+    expect(JSON.stringify(log.mock.calls)).not.toContain("secret_do_not_log");
   });
 
   it("rejects unsigned or badly signed events", async () => {

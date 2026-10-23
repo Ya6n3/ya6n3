@@ -76,11 +76,35 @@ interface MessageResponse {
   stop_reason: string;
 }
 
+// Thinking tokens count toward max_tokens and the current models think by default,
+// so this must leave room for them plus the short answer (about 1,800 characters).
+const MAX_TOKENS = 8000;
+
+/**
+ * Thinking depth for the research call. "medium" keeps cost and latency down for
+ * a task that is mostly searching and summarising. RESEARCH_EFFORT=none omits it,
+ * for a RESEARCH_MODEL that does not accept the parameter.
+ */
+function researchEffort(): string | null {
+  const effort = (process.env.RESEARCH_EFFORT ?? "medium").trim().toLowerCase();
+  return effort && effort !== "none" ? effort : null;
+}
+
+/** Why a reply with no text came back empty, so the note on the Notion row is useful. */
+function emptyReason(stop: string): string {
+  if (stop === "max_tokens") return "Claude ran out of tokens before answering (max_tokens)";
+  if (stop === "refusal") return "Claude declined the request (refusal)";
+  if (stop === "pause_turn") return "Claude did not finish after 3 resumed turns (pause_turn)";
+  return "empty research reply";
+}
+
 async function callClaude(item: PipelineItem, today: string): Promise<string> {
   const messages: { role: "user" | "assistant"; content: unknown }[] = [
     { role: "user", content: buildUserPrompt(item, today) },
   ];
+  const effort = researchEffort();
   let text = "";
+  let stop = "";
   // Server-side web search can pause a long turn; resume it a couple of times.
   for (let turn = 0; turn < 3; turn++) {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -92,7 +116,8 @@ async function callClaude(item: PipelineItem, today: string): Promise<string> {
       },
       body: JSON.stringify({
         model: process.env.RESEARCH_MODEL || "claude-sonnet-5-5",
-        max_tokens: 2000,
+        max_tokens: MAX_TOKENS,
+        ...(effort ? { output_config: { effort } } : {}),
         system: SYSTEM_PROMPT,
         messages,
         tools: [
@@ -119,9 +144,13 @@ async function callClaude(item: PipelineItem, today: string): Promise<string> {
     }
     const msg = (await res.json()) as MessageResponse;
     text += msg.content.filter((b) => b.type === "text").map((b) => b.text ?? "").join("");
-    if (msg.stop_reason !== "pause_turn") break;
+    stop = msg.stop_reason;
+    if (stop !== "pause_turn") break;
     messages.push({ role: "assistant", content: msg.content });
   }
+  if (!text.trim()) throw new Error(emptyReason(stop));
+  // Keep a partial answer (the operator reads it anyway) but say it is partial.
+  if (stop === "max_tokens") text += "\n- (The reply was cut off. Research this request again or check it by hand.)";
   return text;
 }
 
